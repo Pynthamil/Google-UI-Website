@@ -1,7 +1,5 @@
-export default function Blog() {
-    return (
-        <div>
+import { redirect } from "next/navigation"
 
-        </div>
-    )
+export default function BlogIndex() {
+  redirect("/blog/introduction")
 }
