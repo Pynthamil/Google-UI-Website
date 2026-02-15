@@ -19,21 +19,24 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
-import TabSection from "@/components/TabSection";
 
 import Image from 'next/image';
 
 
 import { Button } from "@/components/ui/button";
 import { Search } from 'lucide-react';
+import { GridPattern } from "@/components/ui/grid-pattern";
+import Link from "next/link";
+
 
 
 export default function Page() {
   return (
-    <div className="">
+    <div className="relative h-[590px] w-full overflow-hidden">
 
       
-
+      <GridPattern className="-z-10"/>
+      
       {/* Google logo */}
       <div className="mt-15 flex flex-inline text-6xl font-semibold justify-center">
         <Image src="/Google logo.svg" alt="Google" width={300} height={300} />
@@ -57,15 +60,18 @@ export default function Page() {
           <CardContent className="px-5.5">
             <div className="bg-white p-1 mb-3 rounded-lg grid grid-cols-[1fr_auto] items-baseline-last">
               <p className="ml-2.5">Read my Blog</p>
-              <Button variant="outline" size="sm" >
-                Visit
-              </Button>
+              <Link href="/blog/introduction">
+                <Button variant="outline" size="sm" >
+                  Visit
+                </Button>
+              </Link>
             </div>
 
             <div className="bg-white p-1 mb-3 rounded-lg grid grid-cols-[1fr_auto] items-baseline-last">
               <p className="ml-2.5">
                 Look at the Charts
               </p>
+
               <Button variant="outline" size="sm">
                 Visit
               </Button>
