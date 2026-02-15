@@ -10,14 +10,15 @@ export default function DesktopOnly({
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
-    const checkScreen = () => {
-      setIsMobile(window.innerWidth < 1024) // lg breakpoint
-    }
+    const userAgent =
+      typeof navigator === "undefined" ? "" : navigator.userAgent
 
-    checkScreen()
-    window.addEventListener("resize", checkScreen)
+    const mobile =
+      /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(
+        userAgent
+      )
 
-    return () => window.removeEventListener("resize", checkScreen)
+    setIsMobile(mobile)
   }, [])
 
   if (isMobile) {
@@ -25,7 +26,7 @@ export default function DesktopOnly({
       <div className="fixed inset-0 flex items-center justify-center bg-white px-6 text-center">
         <div>
           <h1 className="text-2xl font-semibold mb-4">
-            View this page on a laptop 💻
+            View this page on a laptop
           </h1>
           <p className="text-gray-500">
             This experience is designed for larger screens.
