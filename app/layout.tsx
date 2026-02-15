@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import DesktopOnly from "@/components/DesktopOnly"
 import TabSection from "@/components/TabSection";
 
 const geistSans = Geist({
@@ -24,13 +25,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <TabSection />
-        {children}
-      </body>
-    </html>
+    <DesktopOnly>
+      <html lang="en">
+        <body
+          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        >
+          <TabSection />
+          {children}
+        </body>
+      </html>
+    </DesktopOnly>
   );
 }

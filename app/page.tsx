@@ -32,18 +32,18 @@ import Link from "next/link";
 
 export default function Page() {
   return (
-    <div className="relative h-[590px] w-full overflow-hidden">
+    <div className="relative h-[595px] w-full overflow-hidden">
 
       
       <GridPattern className="-z-10"/>
       
       {/* Google logo */}
       <div className="mt-15 flex flex-inline text-6xl font-semibold justify-center">
-        <Image src="/Google logo.svg" alt="Google" width={300} height={300} />
+        <Image src="/Google logo.svg" alt="Google" width={350} height={300} />
       </div>
 
 
-      <div className="flex flex-col items-center max-w-1000 mt-10">
+      <div className="flex flex-col items-center max-w-1000 mt-5">
         {/* Main searchbar */}
         <InputGroup className="rounded-full m-3 w-150 h-10 bg-white" >
           <InputGroupInput placeholder="Search..." />
