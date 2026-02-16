@@ -89,71 +89,85 @@ export default function Page() {
     };
 
     // ---------------- 1️⃣ AVERAGE LIFESPAN ----------------
-    const avgLifespan = d3.rollups(
-      lifespanData,
-      v => d3.mean(v, d => d["Total years"]),
-      d => d.Start
-    )
-      .map(([year, avg]) => ({ year: +year, avg }))
-      .sort((a, b) => a.year - b.year);
+    // ---------------- 1️⃣ AVERAGE LIFESPAN (FIXED - NO OVERSHOOT) ----------------
+const avgLifespan = d3.rollups(
+  lifespanData,
+  v => d3.mean(v, d => d["Total years"]),
+  d => d.Start
+)
+  .map(([year, avg]) => ({ year: +year, avg }))
+  .sort((a, b) => a.year - b.year);
 
-    avgRef.current?.append(
-      Plot.plot({
-        width: 1000,
-        height: 500,
-        marginLeft: 60,
-        marginTop: 40,
-        marginBottom: 60,
-        style: baseStyle,
-        x: { 
-          label: "Launch Year",
-          grid: false,
-          tickFormat: d => d.toString()
-        },
-        y: { 
-          label: "Average Product Lifespan (years)",
-          grid: true,
-          domain: [0, 12]
-        },
-        marks: [
-          Plot.areaY(avgLifespan, {
-            x: "year",
-            y: "avg",
-            fill: "#4ade80",
-            fillOpacity: 0.15,
-            curve: "catmull-rom"
-          }),
-          Plot.lineY(avgLifespan, {
-            x: "year",
-            y: "avg",
-            stroke: "#4ade80",
-            strokeWidth: 2,
-            curve: "catmull-rom"
-          }),
-          Plot.ruleX([2010], {
-            stroke: "#666",
-            strokeWidth: 1,
-            strokeDasharray: "4,4"
-          }),
-          Plot.text([{ x: 2010, y: 11 }], {
-            x: "x",
-            y: "y",
-            text: ["2010"],
-            fill: "#888",
-            fontSize: 11,
-            dy: -10
-          }),
-          Plot.tip(
-            avgLifespan,
-            Plot.pointerX({
-              x: "year",
-              y: "avg",
-              title: d => `Year: ${d.year}\nAvg: ${d.avg?.toFixed(2)} years`
-            })
-          )
-        ]
-      })
-    );
+avgRef.current?.append(
+  Plot.plot({
+    width: 1000,
+    height: 500,
+    marginLeft: 60,
+    marginTop: 40,
+    marginBottom: 60,
+    style: baseStyle,
+    color: {
+      scheme: "turbo",
+      legend: true,
+      label: "Avg Lifespan",
+      domain: [0, 12]
+    },
+    x: { 
+      label: "Launch Year",
+      grid: true,
+      tickFormat: d => d.toString()
+    },
+    y: { 
+      label: "Average Product Lifespan (years)",
+      grid: true,
+      domain: [0, 12],
+      clamp: true  // Add this to prevent values outside domain
+    },
+    marks: [
+      Plot.frame({ stroke: "#666", strokeWidth: 1 }),
+      // Individual product dots
+      Plot.dot(lifespanData, {
+        x: "Start",
+        y: "Total years",
+        fill: "Total years",
+        fillOpacity: 0.4,
+        r: 3
+      }),
+      // Average line - use linear or monotoneX instead of catmull-rom
+      Plot.line(avgLifespan, {
+        x: "year",
+        y: "avg",
+        stroke: "white",
+        strokeWidth: 3,
+        curve: "monotone-x"  // Changed from catmull-rom - prevents overshoot
+      }),
+      // 2010 marker
+      Plot.ruleX([2010], {
+        stroke: "#666",
+        strokeWidth: 1,
+        strokeDasharray: "4,4"
+      }),
+      Plot.text([{ x: 2010, y: 11 }], {
+        x: "x",
+        y: "y",
+        text: ["2010"],
+        fill: "#888",
+        fontSize: 11,
+        dy: -10
+      }),
+      // Tooltip for individual products
+      Plot.tip(
+        lifespanData,
+        Plot.pointer({
+          x: "Start",
+          y: "Total years",
+          title: d => `${d.Name}\nLaunched: ${d.Start}\nLifespan: ${d["Total years"]} years`
+        })
+      )
+    ]
+  })
+);
+
 
     // ---------------- 2️⃣ SHUTDOWNS ----------------
     const shutdownCounts = d3.rollups(
@@ -171,6 +185,11 @@ export default function Page() {
         marginLeft: 60,
         marginBottom: 60,
         style: baseStyle,
+        color: {
+            scheme: "turbo",
+            legend: true,
+            label: "Shutdown Count"
+        },
         x: {
           label: "Year",
           tickFormat: d => d.toString()
@@ -180,10 +199,11 @@ export default function Page() {
           grid: true
         },
         marks: [
+          Plot.frame({ stroke: "#666", strokeWidth: 1 }),
           Plot.barY(shutdownCounts, {
             x: "year",
             y: "count",
-            fill: "#4ade80",
+            fill: "count",
             fillOpacity: 0.8
           }),
           Plot.lineY(shutdownCounts, {
@@ -206,183 +226,236 @@ export default function Page() {
       })
     );
 
-    // ---------------- 3️⃣ ACTIVE PRODUCTS ----------------
-    const minYear = d3.min(df, d => d.Start)!;
-    const maxYear = d3.max(df.filter(d => d.End != null), d => d.End)!;
-    const years = d3.range(minYear, maxYear + 1);
+    // ---------------- 3️⃣ ACTIVE PRODUCTS (SMOOTH & CLEAN) ----------------
+const minYear = d3.min(df, d => d.Start)!;
+const maxYear = d3.max(df.filter(d => d.End != null), d => d.End)!;
+const years = d3.range(minYear, maxYear + 1);
 
-    const activeData = years.map(year => ({
-      year,
-      active: df.filter(d => d.Start <= year && (d.End == null || d.End >= year)).length
-    }));
+const activeData = years.map(year => ({
+  year,
+  active: df.filter(d => d.Start <= year && (d.End == null || d.End >= year)).length
+}));
 
-    activeRef.current?.append(
-      Plot.plot({
-        width: 1000,
-        height: 500,
-        marginLeft: 60,
-        marginBottom: 60,
-        style: baseStyle,
-        x: {
-          label: "Year",
-          tickFormat: d => d.toString()
-        },
-        y: {
-          label: "Active Products",
-          grid: true
-        },
-        marks: [
-          Plot.areaY(activeData, {
-            x: "year",
-            y: "active",
-            fill: "#4ade80",
-            fillOpacity: 0.2,
-            curve: "catmull-rom"
-          }),
-          Plot.lineY(activeData, {
-            x: "year",
-            y: "active",
-            stroke: "#4ade80",
-            strokeWidth: 2,
-            curve: "catmull-rom"
-          }),
-          Plot.tip(
-            activeData,
-            Plot.pointerX({
-              x: "year",
-              y: "active",
-              title: d => `Year: ${d.year}\nActive: ${d.active}`
-            })
-          )
-        ]
-      })
-    );
+const maxActive = d3.max(activeData, d => d.active)!;
 
-    // ---------------- 4️⃣ HEXBIN MAP ----------------
-    hexbinRef.current?.append(
-      Plot.plot({
-        width: 1000,
-        height: 600,
-        marginLeft: 60,
-        marginBottom: 60,
-        style: baseStyle,
-        x: {
-          label: "Launch Year",
-          grid: true
-        },
-        y: {
-          label: "Product Lifespan (years)",
-          grid: true
-        },
-        color: {
-          scheme: "Greens",
-          legend: true,
-          label: "Product Count"
-        },
-        marks: [
-          Plot.hexagon(
-            lifespanData,
-            Plot.hexbin(
-              { fill: "count" },
-              { 
-                x: "Start", 
-                y: "Total years",
-                binWidth: 15
-              }
-            )
-          ),
-          Plot.tip(
-            lifespanData,
-            Plot.pointer({
-              x: "Start",
-              y: "Total years",
-              title: d => `${d.Name}\n${d.Start} - ${d.End || "Active"}\n${d["Total years"]} years`
-            })
-          )
-        ]
-      })
-    );
+activeRef.current?.append(
+  Plot.plot({
+    width: 1000,
+    height: 500,
+    marginLeft: 60,
+    marginBottom: 60,
+    style: baseStyle,
+    color: {
+      scheme: "turbo",
+      legend: true,
+      label: "Active Count",
+      domain: [0, maxActive]
+    },
+    x: {
+      label: "Year",
+      grid: true,
+      tickFormat: d => d.toString()
+    },
+    y: {
+      label: "Active Products",
+      grid: true,
+      domain: [0, maxActive * 1.1]
+    },
+    marks: [
+      Plot.frame({ stroke: "#666", strokeWidth: 1 }),
+      // Smooth area fill
+      Plot.areaY(activeData, {
+        x: "year",
+        y: "active",
+        fill: "active",
+        fillOpacity: 0.2,
+        curve: "monotone-x"
+      }),
+      // Smooth line
+      Plot.lineY(activeData, {
+        x: "year",
+        y: "active",
+        stroke: "active",
+        strokeWidth: 3,
+        curve: "monotone-x"
+      }),
+      // Individual points
+      Plot.dot(activeData, {
+        x: "year",
+        y: "active",
+        fill: "active",
+        r: 4,
+        stroke: "white",
+        strokeWidth: 1
+      }),
+      // Tooltip
+      Plot.tip(
+        activeData,
+        Plot.pointerX({
+          x: "year",
+          y: "active",
+          title: d => `Year: ${d.year}\nActive Products: ${d.active}`
+        })
+      )
+    ]
+  })
+);
 
-    // ---------------- 5️⃣ CONTOUR PLOT ----------------
-    contourRef.current?.append(
-      Plot.plot({
-        width: 1000,
-        height: 600,
-        marginLeft: 60,
-        marginBottom: 60,
-        style: baseStyle,
-        x: {
-          label: "Launch Year",
-          grid: false
-        },
-        y: {
-          label: "Product Lifespan (years)",
-          grid: false
-        },
-        color: {
-          scheme: "Greens",
-          legend: true
-        },
-        marks: [
-          Plot.density(lifespanData, {
-            x: "Start",
+    // ---------------- 4️⃣ HEXBIN MAP (FIXED AXIS LABELS) ----------------
+hexbinRef.current?.append(
+  Plot.plot({
+    width: 1000,
+    height: 600,
+    marginLeft: 80,
+    marginBottom: 80,
+    marginRight: 60,
+    marginTop: 40,
+    style: baseStyle,
+    x: {
+      label: "Launch Year",
+      grid: true,
+      tickFormat: d => d.toString(),
+      tickRotate: -45  // Rotate labels if needed
+    },
+    y: {
+      label: "Product Lifespan (years)",
+      grid: true,
+      domain: [0, d3.max(lifespanData, d => d["Total years"]) + 1]
+    },
+    color: {
+      scheme: "turbo",
+      legend: true,
+      label: "Product Count",
+      width: 300
+    },
+    marks: [
+      // Frame
+      Plot.frame({ stroke: "#666", strokeWidth: 1 }),
+      
+      // Hexbins with color
+      Plot.dot(
+        lifespanData,
+        Plot.hexbin(
+          { fill: "count" },
+          { 
+            x: "Start", 
             y: "Total years",
-            stroke: "#4ade80",
-            strokeWidth: 1.5,
-            thresholds: 15
-          }),
-          Plot.dot(lifespanData, {
-            x: "Start",
+            binWidth: 25
+          }
+        )
+      ),
+      
+      // Text labels on hexbins
+      Plot.text(
+        lifespanData,
+        Plot.hexbin(
+          { text: "count" },
+          { 
+            x: "Start", 
             y: "Total years",
-            fill: "#4ade80",
-            fillOpacity: 0.2,
-            r: 2
-          })
-        ]
-      })
-    );
+            binWidth: 25
+          }
+        ),
+        {
+          fill: "white",
+          stroke: "black",
+          strokeWidth: 3,
+          paintOrder: "stroke",
+          fontSize: 11,
+          fontWeight: "bold"
+        }
+      ),
+      
+      // Individual product dots (faint)
+      Plot.dot(lifespanData, {
+        x: "Start",
+        y: "Total years",
+        r: 1.5,
+        fill: "white",
+        fillOpacity: 0.2
+      }),
+      
+      // Tooltip
+      Plot.tip(
+        lifespanData,
+        Plot.pointer({
+          x: "Start",
+          y: "Total years",
+          title: d => `${d.Name}\nYear: ${d.Start}\nLifespan: ${d["Total years"]} years`
+        })
+      )
+    ]
+  })
+);
+    
 
-    // ---------------- 6️⃣ DENSITY HEATMAP ----------------
-    densityRef.current?.append(
-      Plot.plot({
-        width: 1000,
-        height: 600,
-        marginLeft: 60,
-        marginBottom: 60,
-        style: baseStyle,
-        x: {
-          label: "Launch Year",
-          grid: false
-        },
-        y: {
-          label: "Product Lifespan (years)",
-          grid: false
-        },
-        color: {
-          scheme: "Greens",
-          legend: true,
-          label: "Density"
-        },
-        marks: [
-          Plot.raster(lifespanData, {
-            x: "Start",
-            y: "Total years",
-            fill: "density",
-            bandwidth: 20,
-            interpolate: "random-walk",
-            pixelSize: 4
-          }),
-          Plot.dot(lifespanData, {
-            x: "Start",
-            y: "Total years",
-            fill: "white",
-            fillOpacity: 0.3,
-            r: 2
-          })
-        ]
-      })
-    );
-
+    // ---------------- 5️⃣ DENSITY CONTOUR (FIXED ALL MARGINS) ----------------
+densityRef.current?.append(
+  Plot.plot({
+    width: 1000,
+    height: 600,
+    marginLeft: 80,
+    marginBottom: 100,
+    marginRight: 100,  // Increased from 60
+    marginTop: 40,
+    style: baseStyle,
+    x: {
+      label: "Launch Year",
+      grid: true,
+      tickFormat: d => d.toString(),
+      tickRotate: -45,
+      labelOffset: 50
+    },
+    y: {
+      label: "Product Lifespan (years)",
+      grid: true,
+      domain: [0, d3.max(lifespanData, d => d["Total years"]) + 1]
+    },
+    color: {
+      scheme: "turbo",
+      legend: true,
+      label: "Density",
+      width: 300
+    },
+    marks: [
+      // Frame
+      Plot.frame({ stroke: "#666", strokeWidth: 1 }),
+      
+      // Density contours
+      Plot.density(lifespanData, {
+        x: "Start",
+        y: "Total years",
+        fill: "density",
+        stroke: "density",
+        strokeWidth: 0.5,
+        bandwidth: 20,
+        thresholds: 20
+      }),
+      
+      // Individual product dots
+      Plot.dot(lifespanData, {
+        x: "Start",
+        y: "Total years",
+        r: 2,
+        fill: "white",
+        fillOpacity: 0.3,
+        stroke: "black",
+        strokeWidth: 0.5,
+        strokeOpacity: 0.3
+      }),
+      
+      // Tooltip
+      Plot.tip(
+        lifespanData,
+        Plot.pointer({
+          x: "Start",
+          y: "Total years",
+          title: d => `${d.Name}\nYear: ${d.Start}\nLifespan: ${d["Total years"]} years`
+        })
+      )
+    ]
+  })
+);
     // ---------------- 7️⃣ CATEGORY HEATMAP ----------------
     const shutdownData = df.filter(d => d.End != null);
     
@@ -415,11 +488,12 @@ export default function Page() {
           label: "Category"
         },
         color: {
-          scheme: "Greens",
+          scheme: "turbo",
           legend: true,
           label: "Shutdowns"
         },
         marks: [
+          Plot.frame({ stroke: "#666", strokeWidth: 1 }),
           Plot.cell(heatmapData, {
             x: "year",
             y: "category",
@@ -437,36 +511,56 @@ export default function Page() {
       })
     );
 
-    // ---------------- 8️⃣ CATEGORY DISTRIBUTION ----------------
-    categoryRef.current?.append(
-      Plot.plot({
-        width: 1000,
-        height: 600,
-        marginLeft: 150,
-        marginRight: 40,
-        marginBottom: 60,
-        style: baseStyle,
-        x: {
-          label: "Product Lifespan (years)",
-          grid: true
-        },
-        y: {
-          label: null,
-          domain: d3.groupSort(lifespanData, g => d3.median(g, d => d["Total years"]), d => d.Category)
-        },
-        marks: [
-          Plot.boxX(lifespanData, {
-            x: "Total years",
-            y: "Category",
-            fill: "#4ade80",
-            fillOpacity: 0.3,
-            stroke: "#4ade80",
-            strokeWidth: 1
-          })
-        ]
-      })
-    );
-
+    // ---------------- 8️⃣ CATEGORY DISTRIBUTION (CLEAN - NO DOTS) ----------------
+categoryRef.current?.append(
+  Plot.plot({
+    width: 1000,
+    height: 600,
+    marginLeft: 150,
+    marginRight: 60,
+    marginBottom: 80,
+    marginTop: 40,
+    style: baseStyle,
+    color: {
+      domain: ["App", "Hardware", "Service"],
+      range: ["#a78bfa", "#86efac", "#f87171"], // Purple, Green, Red
+      legend: true,
+    },
+    x: {
+      label: "Product Lifespan (years)",
+      grid: true,
+      domain: [0, d3.max(lifespanData, d => d["Total years"]) + 1]
+    },
+    y: {
+      label: null,
+      domain: d3.groupSort(lifespanData, g => -d3.median(g, d => d["Total years"]), d => d.Category)
+    },
+    marks: [
+      // Frame
+      Plot.frame({ stroke: "#666", strokeWidth: 1 }),
+      
+      // Box plots only
+      Plot.boxX(lifespanData, {
+        x: "Total years",
+        y: "Category",
+        fill: "Category",
+        fillOpacity: 0.6,
+        stroke: "Category",
+        strokeWidth: 2
+      }),
+      
+      // Tooltip
+      Plot.tip(
+        lifespanData,
+        Plot.pointer({
+          x: "Total years",
+          y: "Category",
+          title: d => `${d.Name}\nCategory: ${d.Category}\nLifespan: ${d["Total years"]} years`
+        })
+      )
+    ]
+  })
+);
     // ---------------- 9️⃣ PRODUCT TIMELINE ----------------
     const timelineData = df
       .filter(d => d.Start && d.End)
@@ -481,6 +575,11 @@ export default function Page() {
         marginRight: 100,
         marginBottom: 60,
         style: baseStyle,
+        color: {
+            scheme: "turbo",
+            legend: true,
+            label:"Years Alive"
+        },
         x: {
           label: "Timeline",
           grid: true,
@@ -491,11 +590,12 @@ export default function Page() {
           domain: timelineData.map(d => d.Name)
         },
         marks: [
+          Plot.frame({ stroke: "#666", strokeWidth: 1 }),
           Plot.barX(timelineData, {
             x1: "Start",
             x2: "End",
             y: "Name",
-            fill: "#4ade80",
+            fill: "Total years",
             fillOpacity: 0.7,
             insetTop: 2,
             insetBottom: 2
@@ -504,14 +604,14 @@ export default function Page() {
             x: "Start",
             y: "Name",
             fill: "#1a1a1a",
-            stroke: "#4ade80",
+            stroke: "Total years",
             strokeWidth: 1,
             r: 3
           }),
           Plot.dot(timelineData, {
             x: "End",
             y: "Name",
-            fill: "#4ade80",
+            fill: "Total years",
             r: 3
           }),
           Plot.text(timelineData, {
@@ -532,75 +632,92 @@ export default function Page() {
         ]
       })
     );
-    
-    // ---------------- 🔟 SURVIVAL CURVE ----------------
-    const lifespans = lifespanData
-    .map(d => d["Total years"])
-    .sort((a, b) => a - b);
 
-    const total = lifespans.length;
+    // ================= 8️⃣ SURVIVAL CURVE =================
+const lifespans = lifespanData
+  .map(d => d["Total years"])
+  .sort((a, b) => a - b);
 
-    // Group by unique years to avoid duplicates
-    const uniqueYears = [...new Set(lifespans)].sort((a, b) => a - b);
+const total = lifespans.length;
 
-    const survivalData = uniqueYears.map(years => {
-    // Count how many products survived AT LEAST this long
-    const survivingCount = lifespans.filter(lifespan => lifespan >= years).length;
-    return {
-        years,
-        survival: survivingCount / total,
-        survivingProducts: survivingCount
-    };
-    });
+// Build true survival step curve
+const uniqueYears = [...new Set(lifespans)].sort((a, b) => a - b);
 
-    survivalRef.current?.append(
-    Plot.plot({
-        width: 1000,
-        height: 500,
-        marginLeft: 80,
-        marginBottom: 60,
-        style: baseStyle,
-        x: {
-        label: "Years Since Launch",
-        grid: true
-        },
-        y: {
-        label: "Survival Probability",
-        grid: true,
-        percent: true,
-        domain: [0, 1]
-        },
-        marks: [
-        Plot.areaY(survivalData, {
-            x: "years",
-            y: "survival",
-            fill: "#4ade80",
-            fillOpacity: 0.15,
-            curve: "step-after"
-        }),
-        Plot.line(survivalData, {
-            x: "years",
-            y: "survival",
-            stroke: "#4ade80",
-            strokeWidth: 2,
-            curve: "step-after"
-        }),
-        Plot.ruleY([0.5], {
-            stroke: "#666",
-            strokeWidth: 1,
-            strokeDasharray: "4,4"
-        }),
-        Plot.tip(
-            survivalData,
-            Plot.pointerX({
-            x: "years",
-            y: "survival",
-            title: d => `After ${d.years} years:\n${(d.survival * 100).toFixed(1)}% alive\n${d.survivingProducts} products`
-            })
-        )
-        ]
-    })
-    );
+const survivalData = uniqueYears.map(years => {
+  const surviving = lifespans.filter(l => l >= years).length;
+  return {
+    years,
+    survival: surviving / total,
+    surviving
+  };
+});
+
+// Median survival (first time <= 50%)
+const median =
+  survivalData.find(d => d.survival <= 0.5) ||
+  survivalData[survivalData.length - 1];
+
+survivalRef.current?.append(
+  Plot.plot({
+    width: 900,
+    height: 400,
+
+    x: {
+      label: "Years Since Launch",
+      grid: true
+    },
+
+    y: {
+      label: "Survival Probability",
+      grid: true,
+      domain: [0, 1],
+      percent: true
+    },
+
+    marks: [
+      // Area
+      Plot.areaY(survivalData, {
+        x: "years",
+        y: "survival",
+        fillOpacity: 0.25,
+        curve: "step-after"
+      }),
+
+      // Line
+      Plot.line(survivalData, {
+        x: "years",
+        y: "survival",
+        strokeWidth: 3,
+        curve: "step-after"
+      }),
+
+      // 50% rule
+      Plot.ruleY([0.5], {
+        strokeDasharray: "4,4"
+      }),
+
+      // Median vertical marker
+      Plot.ruleX([median.years], {
+        stroke: "red",
+        strokeDasharray: "4,4"
+      }),
+
+      // Tooltip
+      Plot.tip(
+        survivalData,
+        Plot.pointerX({
+          x: "years",
+          y: "survival",
+          title: d =>
+            `After ${d.years} years:
+${(d.survival * 100).toFixed(1)}% alive
+${d.surviving} products remaining`
+        })
+      )
+    ]
+  })
+);
+
 
     // ---------------- 1️⃣1️⃣ REGRESSION SCATTER ----------------
     regressionRef.current?.append(
@@ -610,6 +727,11 @@ export default function Page() {
         marginLeft: 60,
         marginBottom: 60,
         style: baseStyle,
+        color: {
+            scheme: "turbo",
+            legend: true,
+            label: "Lifespan (years)"
+        },
         x: {
           label: "Launch Year",
           grid: true
@@ -619,17 +741,18 @@ export default function Page() {
           grid: true
         },
         marks: [
+          Plot.frame({ stroke: "#666", strokeWidth: 1 }),
           Plot.dot(lifespanData, {
             x: "Start",
             y: "Total years",
-            fill: "#4ade80",
+            fill: "Total years",
             fillOpacity: 0.4,
             r: 4
           }),
           Plot.linearRegressionY(lifespanData, {
             x: "Start",
             y: "Total years",
-            stroke: "#666",
+            stroke: "#fff",
             strokeWidth: 2,
             strokeDasharray: "6,4"
           }),
@@ -684,8 +807,8 @@ export default function Page() {
           color: "#e0e0e0",
           letterSpacing: "-0.02em",
           lineHeight: "1.2"
-        }}>
-          Google's Graveyard Problem
+        }} className="text-justify">
+          Hunger Games: The Google Edition
         </h1>
         <p style={{ 
           fontSize: "18px", 
@@ -724,45 +847,125 @@ export default function Page() {
         </p>
       </header>
 
-      <section style={{ 
-        marginBottom: "80px", 
-        padding: "30px", 
-        background: "#1a1a1a", 
-        borderLeft: "3px solid #4ade80",
-        borderRadius: "4px"
-        }}>
-        <h3 style={{ fontSize: "14px", marginBottom: "16px", color: "#4ade80" }}>
-            I aim to find out:
-        </h3>
-        <p style={{ fontSize: "18px", color: "#e0e0e0" }}>
-            <strong>Has Google's product development strategy fundamentally changed over time?</strong>
-        </p>
-        <p style={{ fontSize: "16px", color: "#999" }}>
-            And if so, what does this shift mean for product longevity and user trust?
-        </p>
-      </section>
-        
-      <section style={{ marginBottom: "100px" }}>
-            <h2 className="mb-3">How I Investigated</h2>
-            
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "24px" }}>
-                <div style={{ background: "#1a1a1a", padding: "24px" }} className="rounded-sm">
-                    <p style={{ color: "#4ade80" }}>Dataset</p>
-                    <p>{stats.totalProducts} products from killedbygoogle.com
-                    <br />Analysis period: 2000-2023</p>
-                </div>
-                
-                <div style={{ background: "#1a1a1a", padding: "24px" }} className="rounded-sm">
-                    <p style={{ color: "#4ade80" }}>Tools</p>
-                    <p>TypeScript, Next.js, D3.js, Observable Plot</p>
-                </div>
-                
-                <div style={{ background: "#1a1a1a", padding: "24px" }} className="rounded-sm">
-                    <p style={{ color: "#4ade80" }}>Key Metrics</p>
-                    <p>Product lifespan, shutdown rate, survival analysis, regression</p>
-                </div>
+      <section
+            style={{
+                marginBottom: "120px",
+                padding: "60px 0",
+                borderTop: "1px solid #1f1f1f",
+                borderBottom: "1px solid #1f1f1f"
+            }}
+            >
+            <div style={{ maxWidth: "760px" }}>
+                <p
+                style={{
+                    fontSize: "11px",
+                    letterSpacing: "2px",
+                    textTransform: "uppercase",
+                    color: "#666",
+                    marginBottom: "24px"
+                }}
+                >
+                The Question
+                </p>
+
+                <h3
+                style={{
+                    fontSize: "30px",
+                    fontWeight: 400,
+                    lineHeight: 1.4,
+                    color: "#f2f2f2",
+                    marginBottom: "20px",
+                    letterSpacing: "-0.01em"
+                }}
+                >
+                Has Google’s product strategy fundamentally changed?
+                </h3>
+
+                <p
+                style={{
+                    fontSize: "16px",
+                    lineHeight: 1.8,
+                    color: "#9a9a9a",
+                    maxWidth: "640px"
+                }}
+                >
+                If so, what does that shift mean for product longevity, developer
+                confidence, and long-term user trust?
+                </p>
             </div>
       </section>
+
+
+        
+      <section style={{ marginBottom: "140px" }}>
+            <div style={{ maxWidth: "820px" }}>
+                
+                <p
+                style={{
+                    fontSize: "11px",
+                    letterSpacing: "2px",
+                    textTransform: "uppercase",
+                    color: "#666",
+                    marginBottom: "24px"
+                }}
+                >
+                Methodology
+                </p>
+
+                <h2
+                style={{
+                    fontSize: "32px",
+                    fontWeight: 400,
+                    color: "#f2f2f2",
+                    marginBottom: "40px",
+                    letterSpacing: "-0.01em"
+                }}
+                >
+                How I Investigated
+                </h2>
+
+                <div
+                style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "60px",
+                    marginBottom: "60px"
+                }}
+                >
+                <div>
+                    <p style={{ fontSize: "14px", color: "#888", marginBottom: "12px" }}>
+                    Dataset
+                    </p>
+                    <p style={{ fontSize: "16px", lineHeight: 1.8, color: "#b4b4b4" }}>
+                    {stats.totalProducts} Google products sourced from killedbygoogle.com.
+                    <br />
+                    Analysis period: 2000–2023.
+                    </p>
+                </div>
+
+                <div>
+                    <p style={{ fontSize: "14px", color: "#888", marginBottom: "12px" }}>
+                    Tools
+                    </p>
+                    <p style={{ fontSize: "16px", lineHeight: 1.8, color: "#b4b4b4" }}>
+                    TypeScript, Next.js, D3.js, Observable Plot.
+                    </p>
+                </div>
+                </div>
+
+                <div style={{ maxWidth: "600px" }}>
+                <p style={{ fontSize: "14px", color: "#888", marginBottom: "12px" }}>
+                    Key Metrics
+                </p>
+                <p style={{ fontSize: "16px", lineHeight: 1.8, color: "#b4b4b4" }}>
+                    Product lifespan, shutdown rate, survival probability, and regression
+                    modeling across launch cohorts.
+                </p>
+                </div>
+
+            </div>
+       </section>
+
       
       {/* ACT I: THE DISCOVERY */}
       <section style={{ marginBottom: "120px" }}>
@@ -866,7 +1069,7 @@ export default function Page() {
           the topography of failure. For that, I needed contours.
         </p>
 
-        <div ref={contourRef} style={{ marginBottom: "40px" }} />
+        <div ref={densityRef} style={{ marginBottom: "40px" }} />
         
         <p style={{ fontSize: "15px", lineHeight: "1.8", color: "#888", marginBottom: "40px", maxWidth: "800px" }} className="text-justify">
           Think of this as a topographic map of Google's graveyard. Each contour line represents equal probability density. 
@@ -874,13 +1077,6 @@ export default function Page() {
           The elongated contours on the right (post-2010) show products dying at 2-4 years.
         </p>
 
-        <div ref={densityRef} style={{ marginBottom: "40px" }} />
-        
-        <p style={{ fontSize: "15px", lineHeight: "1.8", color: "#888", maxWidth: "800px" }} className="text-justify">
-          The raster density map paints the picture clearly: a bright hotspot sits squarely in the 2010-2018 era 
-          at the 2-4 year mark. This is where Google's graveyard is most crowded. If your product falls in this zone, 
-          the data says: you're doomed.
-        </p>
       </section>
 
       {/* ACT IV: THE PATTERN */}
@@ -1135,10 +1331,10 @@ export default function Page() {
           from killedbygoogle.com dataset. All visualizations created with Observable Plot and D3.js.
         </p>
         <p style={{ marginBottom: "8px" }}>
-          <strong style={{ color: "#888" }}>Tools:</strong> TypeScript, React, D3.js, Observable Plot
+          <strong style={{ color: "#888" }}>Tools:</strong> TypeScript, Next.js, D3.js, Observable Plot
         </p>
         <p style={{ marginBottom: "8px" }}>
-          <strong style={{ color: "#888" }}>Code:</strong> [Your GitHub Link]
+          <strong style={{ color: "#888" }}>Code:</strong> https://github.com/Pynthamil/The-Hunger-Games-The-Google-Edition/blob/main/Google.ipynb
         </p>
       </footer>
 
