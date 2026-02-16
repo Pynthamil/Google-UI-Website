@@ -53,14 +53,14 @@ export default function Page() {
         </InputGroup>
 
         {/* Cards to the links */}
-        <Card className="bg-[#F0E6F0] m-3 h-57 w-150">
+        <Card className="bg-[#F0E6F0] m-3 h-45 w-150">
           <CardHeader className="px-4">
             <CardTitle className="text-neutral-600">Recently visited sites</CardTitle>
           </CardHeader>
           <CardContent className="px-5.5">
             <div className="bg-white p-1 mb-3 rounded-lg grid grid-cols-[1fr_auto] items-baseline-last">
-              <p className="ml-2.5">Read my Blog</p>
-              <Link href="/blog/introduction">
+              <p className="ml-2.5">View the Analysis</p>
+              <Link href="/charts">
                 <Button variant="outline" size="sm" >
                   Visit
                 </Button>
@@ -69,19 +69,14 @@ export default function Page() {
 
             <div className="bg-white p-1 mb-3 rounded-lg grid grid-cols-[1fr_auto] items-baseline-last">
               <p className="ml-2.5">
-                Look at the Charts
+                Go to the colab-notebook
               </p>
 
-              <Button variant="outline" size="sm">
-                Visit
-              </Button>
-            </div>
-
-            <div className="bg-white p-1 mb-3 rounded-lg grid grid-cols-[1fr_auto] items-baseline-last">
-              <p className="ml-2.5">My Inspo and Bloopers</p>
-              <Button variant="outline" size="sm">
-                Visit
-              </Button>
+              <Link href="/colab-notebook">
+                <Button variant="outline" size="sm" >
+                  Visit
+                </Button>
+              </Link>
             </div>
             
           </CardContent>
