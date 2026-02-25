@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@observablehq/plot": "^0.6.17",
+    "@vercel/analytics": "^1.6.1",
     "apexcharts": "^5.4.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
