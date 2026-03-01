@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <a href="https://your-vercel-url.vercel.app"><strong>→ View Live Demo</strong></a>
+  <a href="https://google-ui-website.vercel.app/"><strong>→ View Live Demo</strong></a>
   &nbsp;·&nbsp;
   <a href="https://github.com/Pynthamil/The-Hunger-Games-The-Google-Edition">Python Analysis Repo</a>
 </p>
