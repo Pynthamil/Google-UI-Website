@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/banner.png" alt="Hunger Games: The Google Edition" width="100%">
+  <img src="public/Google Logo.svg" alt="Hunger Games: The Google Edition" width="100%">
 </p>
 
 <h1 align="center">Hunger Games: The Google Edition</h1>
